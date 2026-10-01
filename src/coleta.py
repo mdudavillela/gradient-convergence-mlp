@@ -2,7 +2,8 @@
 coleta.py
 ---------
 Módulo responsável por buscar dados de filmes diretamente na API oficial do
-TMDB (The Movie Database) e salvar o resultado em um CSV local, com cache.
+TMDB (The Movie Database) e salvar o resultado em um CSV local, com cache. Como?
+TMDB -> descobrir quais filmes existem -> pegar os IDs (para cada ID: buscar os detalhes) -> juntar tudo -> transformar em tabela -> salvar csv
 
 Conceitos usados (para eu lembrar):
 
@@ -17,29 +18,48 @@ Conceitos usados (para eu lembrar):
 
 - Cache: guarda o resultado de um processo caro (aqui, milhares de chamadas de API) em disco, para não precisar refazer o processo toda
   vez que o código roda de novo.
+  
+- No Python, a maioria das bibliotecas usadas para "ciência de dados" são equivalentes aos pacotes do tidyverse do R.
 
 Como usar este módulo (dentro de um notebook):
 
     from coleta import coletar_dataset
 
     df = coletar_dataset(
-        api_key=API_KEY,
-        cache_path="../data/tmdb_raw.csv",
+        api_key = API_KEY,
+        cache_path = "../data/tmdb_raw.csv",
     )
 """
-
+# os: biblioteca que permite ao python interagir como sistema operacional (operational system), por ex.: verificar se
+# um arquivo existe; criar pastas; descobrir caminhos; trabalhar com arquivos e diretórios.
+# equivalência no R: base R e fs do tidyverse
 import os
+
+# time: serve para lidar com funções de tempo de baixo nível, como medir a duração de códigos, pausar a execução e converter formatos de data e hora.
+# equivalência no R: lubridate do tidyverse
 import time
+
+# requests: serve para fazer requisições HTTP, ou seja, permite que o python converse com sites e APIs.
+# equivalência no R: httpr2 e jsonlite (para ler arquivos JSON)
 import requests
+
+# pandas: é a principal ferramenta do python para análise, manipulação e limpeza de dados.
+# equivalência no R: dplyer, tidyr, conceito de tibble e o pipe %>%
 import pandas as pd
+
+# serve para fazer programação concorrente (paralelismo/multithreading), ou seja, ele permite que 
+# o python execute várias tarefas ao mesmo tempo (em paralelo), em vez de esperar uma terminar para começar a outra.
+# ThreadPoolExecutor: cria um "pool" (grupo) de linhas de execução (threads). você define quantas tarefas quer rodar em paralelo (ex: 5 por vez).
+# as_completed: controla a execução e avisa o código assim que qualquer uma das tarefas paralelas terminar, permitindo pegar
+# o resultado imediatamente, sem ter que esperar a ordem exata de envio.
+# equivalência no R: não conheço
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# URL base da API. Todo endpoint que chamamos é "colado" depois dela,
-# por exemplo: BASE_URL + "/movie/550" vira a URL completa do filme de id 550.
-BASE_URL = "https://api.themoviedb.org/3"
+url_base = "https://api.themoviedb.org/3"
+# guarda a parte principal da URL da API, ou seja, guarda algo que será usado várias vezes em uma varíavel
+# em vez de escrever, por exemplo, https://api.themoviedb.org/3/movie/550 toda vez, podemos escrever url_base + "/movie/550"
 
-
-def tmdb_get(api_key, endpoint, params=None, max_retries=3):
+def tmdb_get(api_key, endpoint, params = None, max_retries = 3): #criando uma função
     """Faz uma requisição GET a um endpoint da API do TMDB e devolve a
     resposta já convertida de JSON para dicionário Python.
 
@@ -92,10 +112,7 @@ def coletar_ids_candidatos(api_key, n_pages=250, min_vote_count=100):
         Ex: n_pages=250 tenta reunir até ~5000 filmes candidatos.
     min_vote_count : int
         Exige que o filme já tenha pelo menos esse número de votos no
-        TMDB. Isso filtra filmes muito obscuros, cuja nota de público
-        (vote_average) seria calculada em cima de poucas avaliações e,
-        por isso, pouco confiável estatisticamente (o mesmo raciocínio
-        que já usamos com o número mínimo de reviews da Steam).
+        TMDB.
     """
     ids = []
     for page in range(1, n_pages + 1):
@@ -109,15 +126,13 @@ def coletar_ids_candidatos(api_key, n_pages=250, min_vote_count=100):
         # A API devolve um dicionário com uma chave "results", que é a
         # lista de filmes daquela página. Se vier vazia, significa que
         # acabaram os filmes disponíveis (chegamos ao fim do catálogo
-        # filtrado) — nesse caso, paramos o loop mais cedo com `break`,
+        # filtrado), nesse caso, paramos o loop mais cedo com `break`,
         # mesmo que ainda não tenhamos chegado em n_pages.
         results = data.get("results", [])
         if not results:
             break
 
-        # Para cada filme (m) na lista de resultados, pegamos só o campo
-        # "id" — isso é uma "list comprehension", um jeito compacto em
-        # Python de escrever um loop que constrói uma lista nova.
+        # Para cada filme (m) na lista de resultados, pegamos só o campo "id"
         # Equivale a:
         #   ids_da_pagina = []
         #   for m in results:
@@ -127,13 +142,7 @@ def coletar_ids_candidatos(api_key, n_pages=250, min_vote_count=100):
         if page % 50 == 0:  # só para mostrar progresso a cada 50 páginas
             print(f"  página {page}/{n_pages} | {len(ids)} ids coletados até agora")
 
-    # list(dict.fromkeys(ids)): um truque comum em Python para remover
-    # duplicados de uma lista MANTENDO a ordem original. Um dicionário não
-    # pode ter chaves repetidas, então ao usar os ids como chaves e
-    # converter de volta para lista, os duplicados somem automaticamente.
-    # (Por que pode haver duplicados? Porque a lista de filmes populares
-    # pode mudar de posição entre uma página e outra, e o mesmo filme
-    # ocasionalmente aparecer em mais de uma página consultada.)
+    # list(dict.fromkeys(ids)): para remover duplicados de uma lista mantendo a ordem original.
     return list(dict.fromkeys(ids))
 
 
@@ -145,14 +154,7 @@ def buscar_detalhes(api_key, movie_id):
     Retorna um dicionário "limpo", já só com os campos que nos interessam
     (em vez de devolver a resposta bruta da API, que tem muito mais
     informação do que vamos usar).
-
-    Por que devolver None em caso de erro, em vez de deixar o erro
-    "estourar"? Porque esta função vai ser chamada milhares de vezes (uma
-    por filme). Se UM filme específico falhar (ex: foi removido do TMDB
-    entre a etapa de descoberta e esta etapa), não queremos que isso
-    derrube a coleta inteira — melhor pular esse filme e seguir com os
-    outros. Quem chama esta função (a `coletar_dataset`) já sabe ignorar
-    os `None` que aparecerem.
+    
     """
     try:
         d = tmdb_get(api_key, f"/movie/{movie_id}")
@@ -175,14 +177,14 @@ def buscar_detalhes(api_key, movie_id):
             "production_companies_count": len(d.get("production_companies") or []),
         }
     except Exception:
-        # Captura QUALQUER tipo de erro (falha de rede, campo ausente,
+        # Captura qualquer tipo de erro (falha de rede, campo ausente,
         # filme não encontrado etc.) e devolve None em vez de travar tudo.
         return None
 
 
-def coletar_dataset(api_key, cache_path, n_pages=250, min_vote_count=100,
-                     max_workers=10, force_refresh=False):
-    """Função principal deste módulo: orquestra a coleta completa
+def coletar_dataset(api_key, cache_path, n_pages = 250, min_vote_count = 100,
+                     max_workers = 10, force_refresh = False):
+    """Função principal desa parte: orquestra a coleta completa
     (descobrir IDs -> buscar detalhes de cada um -> salvar em CSV) e
     cuida do cache, para não repetir esse trabalho pesado sem necessidade.
 
@@ -192,21 +194,21 @@ def coletar_dataset(api_key, cache_path, n_pages=250, min_vote_count=100,
         Caminho do arquivo CSV onde o resultado é salvo/lido, ex:
         "data/tmdb_raw.csv".
     max_workers : int
-        Quantas requisições rodar SIMULTANEAMENTE durante a busca de
+        Quantas requisições rodar simultaneamente durante a busca de
         detalhes. Um número maior acelera a coleta, mas também aumenta o
         risco de esbarrar no limite de requisições da API (erro 429).
         10 é um valor equilibrado.
     force_refresh : bool
         Se True, ignora um cache existente e coleta tudo de novo na API.
-        Use isso só quando quiser dados atualizados de propósito.
+        USAR ISSO SOMENTE QUANDO QUISER DADOS ATUALIZADOS DE PROPÓSITO (DEPOIS DE ACABAR A IC)!!!!!!!!!!
 
     Retorna
     -------
     pandas.DataFrame
         Uma linha por filme coletado.
     """
-    # Primeiro checamos se já existe um cache em disco. Se existir E não
-    # pedirmos refresh forçado, nem chegamos a tocar na API — só lemos o
+    # Primeiro checamos se já existe um cache em disco. Se existir e não
+    # pedirmos refresh forçado, nem chegamos a tocar na API, só lemos o
     # CSV, que é quase instantâneo comparado a milhares de requisições.
     if os.path.exists(cache_path) and not force_refresh:
         print(f"Cache encontrado em '{cache_path}' — carregando em vez de recoletar.")
