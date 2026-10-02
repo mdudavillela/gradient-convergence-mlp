@@ -60,45 +60,20 @@ url_base = "https://api.themoviedb.org/3"
 # em vez de escrever, por exemplo, https://api.themoviedb.org/3/movie/550 toda vez, podemos escrever url_base + "/movie/550"
 
 def tmdb_get(api_key, endpoint, params = None, max_retries = 3): #criando uma função
-    """Faz uma requisição GET a um endpoint da API do TMDB e devolve a
-    resposta já convertida de JSON para dicionário Python.
-
-    Parâmetros
-    ----------
-    api_key : str
-        Minha chave de autenticação do TMDB (v3 auth).
-    endpoint : str
-        O caminho do endpoint, ex: "/movie/550" ou "/discover/movie".
-        Isso NÃO inclui o BASE_URL, essa função monta a URL completa.
-    params : dict, opcional
-        Parâmetros extras da requisição (ex: {"page": 2}). A api_key é
-        adicionada automaticamente a esse dicionário, então não
-        precisa passar ela aqui de novo.
-    max_retries : int
-        Quantas vezes tentar de novo se a API responder "429 Too Many
-        Requests" (limite de requisições por segundo atingido) antes de
-        desistir.
-    """
-    # dict(params or {}): se params for None, usa um dicionário vazio;
-    # senão, faz uma CÓPIA do dicionário recebido. Fazemos uma cópia (em
-    # vez de usar o dicionário original diretamente) para não modificar,
-    # por acidente, um dicionário que quem chamou essa função ainda vai usar depois
+# params: "filtros"
+  
     params = dict(params or {})
-    params["api_key"] = api_key
+    params["api_key"] = api_key # dando o nome de "api_key" para a api_key (às vezes o óbvio precisa ser dito)
 
-    for _ in range(max_retries):
-        resp = requests.get(f"{BASE_URL}{endpoint}", params=params, timeout=10)
-
-        if resp.status_code == 200:
-            # 200 = sucesso. resp.json() faz o parsing do corpo da resposta
-            # (que vem como texto, no formato JSON) para um dict Python.
-            return resp.json()
-
-        if resp.status_code == 429:
-            time.sleep(1.5)
+    for _ in range(max_retries): # usamos _ em vez de i porque só queremos que o loop se repita X vezes, mas o número da iteração atual não importa
+        resposta_api = requests.get(f"{url_base}{endpoint}", params = params, timeout = 10) # f" " junta duas varáveis; requests.get: busca/consulta dodos na API
+        if resposta_api.status_code == 200: # 200 significa sucesso no padrão internacional criado pelos inventores do world wide web
+            return resposta_api.json() # retorna o parsing (conversão estrutural), que lê os dados em JSON e transforma em um dicionário do python
+        if resposta_api.status_code == 429: # 429 significa muitas requisições
+            time.sleep(1.5) # suspende temporariamente a execução da thread atual pra dar tempo de renovar a cota de requisições
             continue
-        resp.raise_for_status()
-    raise RuntimeError(f"Falha ao buscar {endpoint} após {max_retries} tentativas")
+        resposta_api.raise_for_status() # analisa o código (nesse caso, 200 ou 429), se for 200 é vida que segue, se for 429 ele para e fala qual erro ocorreu
+    raise RuntimeError(f"Falha ao buscar {endpoint} após {max_retries} tentativas") # para a execução e lança uma classe de erro genérica do python (RuntimeError)
 
 
 def coletar_ids_candidatos(api_key, n_pages=250, min_vote_count=100):
