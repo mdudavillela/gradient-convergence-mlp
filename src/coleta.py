@@ -60,7 +60,8 @@ url_base = "https://api.themoviedb.org/3"
 # em vez de escrever, por exemplo, https://api.themoviedb.org/3/movie/550 toda vez, podemos escrever url_base + "/movie/550"
 
 def tmdb_get(api_key, endpoint, params = None, max_retries = 3): #criando uma função
-# params: "filtros"
+# tmdb_get: função que descobre quais filmes existem no dataset
+# params: filtros
   
     params = dict(params or {})
     params["api_key"] = api_key # dando o nome de "api_key" para a api_key (às vezes o óbvio precisa ser dito)
@@ -76,19 +77,8 @@ def tmdb_get(api_key, endpoint, params = None, max_retries = 3): #criando uma fu
     raise RuntimeError(f"Falha ao buscar {endpoint} após {max_retries} tentativas") # para a execução e lança uma classe de erro genérica do python (RuntimeError)
 
 
-def coletar_ids_candidatos(api_key, n_pages=250, min_vote_count=100):
-    """Percorre o endpoint /discover/movie, página por página, e retorna
-    uma lista com os IDs dos filmes encontrados (sem duplicatas).
-
-    Parâmetros
-    ----------
-    n_pages : int
-        Quantas páginas buscar no máximo (cada página tem ~20 filmes).
-        Ex: n_pages=250 tenta reunir até ~5000 filmes candidatos.
-    min_vote_count : int
-        Exige que o filme já tenha pelo menos esse número de votos no
-        TMDB.
-    """
+def coletar_ids_candidatos(api_key, n_pages = 250, min_vote_count = 100): #criando outra função
+  # coletar_ids_candidatos: função que faz a paginação (lista bonitinha sem repetições) e extração em lotes (chunks?) dos IDs
     ids = []
     for page in range(1, n_pages + 1):
         data = tmdb_get(api_key, "/discover/movie", {
