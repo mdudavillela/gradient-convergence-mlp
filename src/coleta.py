@@ -64,18 +64,18 @@ BASE_URL = "https://api.themoviedb.org/3"
 # em vez de escrever, por exemplo, https://api.themoviedb.org/3/movie/550 toda vez, podemos escrever BASE_URL + "/movie/550"
 
 def tmdb_get(api_key, caminho_api, filtros = None, max_retries = 3): #criando uma função
-# tmdb_get: função que descobre quais filmes existem no dataset
+# tmdb_get: função que faz uma chamada GET à API
     filtros = dict(filtros or {})
     filtros["api_key"] = api_key # dando o nome de "api_key" para a api_key (às vezes o óbvio precisa ser dito)
 
     for _ in range(max_retries): # usamos _ em vez de i porque só queremos que o loop se repita X vezes, mas o número da iteração atual não importa
-        resposta_api = requests.get(f"{BASE_URL}{caminho_api}", filtros = filtros, timeout = 10) # f" " junta duas varáveis; requests.get: busca/consulta dodos na API
+        resposta_api = requests.get(f"{BASE_URL}{caminho_api}", params = filtros, timeout = 10) # f" " junta duas varáveis; requests.get: busca/consulta dodos na API
         if resposta_api.status_code == 200: # 200 significa sucesso no padrão internacional criado pelos inventores do world wide web
             return resposta_api.json() # retorna o parsing (conversão estrutural), que lê os dados em JSON e transforma em um dicionário do python
         if resposta_api.status_code == 429: # 429 significa muitas requisições
             time.sleep(1.5) # suspende temporariamente a execução da thread atual pra dar tempo de renovar a cota de requisições
             continue
-        resposta_api.raise_for_status() # analisa o código (nesse caso, 200 ou 429), se for 200 é vida que segue, se for 429 ele para e fala qual erro ocorreu
+        resposta_api.raise_for_status() # analisa o código de status HTTP e lança a exceção que pode ser qualquer erro (menos 200 e 429 pq já foram verificados)
     raise RuntimeError(f"Falha ao buscar {caminho_api} após {max_retries} tentativas") # para a execução e lança uma classe de erro genérica do python (RuntimeError)
 
 
@@ -148,7 +148,7 @@ def coletar_dataset(api_key, cache_path, n_paginas = 250, qtd_votos_min = 100,
     print("\nEtapa 1b: buscando detalhes de cada filme (em paralelo)...")
     registros = []
 
-    with ThreadPoolExecutor(numero_threads = numero_threads) as executor: # o comando with garante que todas as threads sejam fechadas e limpas da memória corretamente quando o bloco terminar
+    with ThreadPoolExecutor(max_workers = numero_threads) as executor: # o comando with garante que todas as threads sejam fechadas e limpas da memória corretamente quando o bloco terminar
         futures = {executor.submit(buscar_detalhes, api_key, mid): mid for mid in ids} # mid: movie id (lista de ids dos filmes)
         # future (promessa): um espaço reservado na memória que receberá o resultado real assim que a thread terminar de processar aquela requisição.
         # as_completed(futures) devolve cada "promessa" assim que a thread terminar de processar aquela requisição
