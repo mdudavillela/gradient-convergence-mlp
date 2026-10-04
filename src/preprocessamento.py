@@ -90,7 +90,7 @@ def selecionar_features(df):
   colunas_numericas = ["log_budget", "runtime", "release_year", "production_companies_count"]
   df_features = df[colunas_numericas].copy()
 
-  return df[colunas_numericas]
+  return df_features
 
 
 def tratar_categoricas(df, top_n_generos = 10, top_n_idiomas = 5):
