@@ -18,7 +18,7 @@ Como primeira etapa prática do projeto, implementamos o Gradiente Descendente a
 gradient-convergence-mlp/
 ├── data/
 │   └── tmdb_raw.csv          # dados brutos coletados da API (cache, commitado uma única vez)
-├── src/                       # src vem de source (código-fonte)
+├── src/                       # src: source (código-fonte)
 │   ├── coleta.py              # busca os dados na API do TMDB e salva em CSV, com cache
 │   └── preprocessamento.py    # filtra, cria o alvo, seleciona features, normaliza, separa treino/teste
 ├── notebooks/
