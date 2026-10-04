@@ -28,6 +28,23 @@ Como usar este módulo dentro de um notebook:
     )
 """
 
+"""
+A seguinte função faz um processo chamado *multi-hot encoding*.
+
+*Multi-hot encoding* é uma técnica de pré-processamento usada em aprendizado de máquina
+para representar dados categóricos em formato numérico binário quando um único item pode pertencer a várias categorias ao mesmo tempo.
+
+**Como funciona?**
+
+• **Vetor binário**: Cria-se um vetor de tamanho fixo, onde cada posição corresponde a uma categoria possível.
+
+• **Múltiplos "`1`s"**: Diferente do one-hot encoding tradicional (que ativa apenas uma posição com o valor 1),
+o *multi-hot encoding* define como `1` todas as posições referentes às categorias presentes na amostra, mantendo as demais como `0`.
+
+Esta célula de código implementa uma etapa de engenharia de recursos (feature engineering) e pré-processamento de variáveis categóricas.
+O objetivo dela é transformar dados textuais complexos (gêneros e idiomas, nesse caso) em uma matriz de variáveis numéricas binárias (0 ou 1).
+"""
+
 import ast
 # biblioteca ast: serve pra processar, analisar e modificar o próprio
 # código-fonte do python antes de ele ser executado
