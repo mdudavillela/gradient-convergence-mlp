@@ -1,7 +1,7 @@
 """
 preprocessamento.py
 --------------------
-Módulo responsável por transformar o csv bruto coletado da API do TMDB em
+Módulo responsável por transformar o csv coletado da API do TMDB em
 dados prontos para treinar o Perceptron: filtra registros inválidos, cria
 a variável-alvo, seleciona/constrói as features, e separa treino/teste
 já normalizado.
