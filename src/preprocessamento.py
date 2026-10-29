@@ -83,8 +83,8 @@ def criar_alvo(df):
 
   # log(1+x) é a transformação padrão na literatura de bilheteria pra deixar
   # a distribuição mais próxima da normal
-  df["log_revenue"] = np.log1p(df["revenue"])
-  df["log_budget"] = np.log1p(df["budget"])
+  df["log_revenue"] = np.log1p(df["revenue_ajustado"])
+  df["log_budget"] = np.log1p(df["budget_ajustado"])
 
   # converte pra um tipo de data de verdade (não como texto)
   # e .dt.year extrai só o ano (pq o ano de lançamento captura tendência ao
