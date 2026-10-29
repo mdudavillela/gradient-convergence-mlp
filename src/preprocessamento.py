@@ -7,7 +7,7 @@ a variável-alvo, seleciona/constrói as features, e separa treino/teste
 já normalizado.
 
 Lógica para o pré-processamento (como?):
-tmdb_raw.csv -> carregar_dados_validos() -> criar_alvo() -> selecionar_features() ->
+tmdb_raw.csv -> carregar_dados_validos() -> ajustar_inflacao() -> criar_alvo() -> selecionar_features() ->
 tratar_categoricas() -> dividir_e_normalizar() -> (x_treino, x_teste, y_treino, y_teste)
 
 Como usar este módulo dentro de um notebook:
@@ -18,6 +18,7 @@ Como usar este módulo dentro de um notebook:
     )
 
     df = carregar_dados_validos("data/tmdb_raw.csv")
+    df = ajustar_inflacao(df, cpi_anual)
     df = criar_alvo(df)
     x_numerico = selecionar_features(df)
     x_categorico = tratar_categoricas(df)
@@ -73,6 +74,35 @@ def carregar_dados_validos(caminho_csv):
   df = df.dropna(subset = ["runtime", "release_date"]).copy()
 
   return df
+
+
+def ajustar_inflacao(df, cpi_anual, ano_referencia = 2025):
+    #ajustar_inflacao: converte budget e revenue (dólares nominais do ano de
+    #lançamento) para dólares constantes do ano_referencia
+    #valor_real: valor_nominal * cpi_referencia / cpi_ano_filme
+
+    df = df.copy()
+
+    #ano de lançamento de cada filme
+    anos = pd.to_datetime(df["release_date"], errors = "coerce").dt.year
+
+    #cria uma consulta que dado o ano, devolve o cpi daquele ano
+    #equivalência no R: left_join() pelo ano
+    cpi_por_ano = cpi_anual.set_index("ano")["cpi"]
+    cpi_ref = cpi_por_ano[ano_referencia]
+
+    #.map procura o ano de cada filme na consulta e devolve o cpi correspondente
+    cpi_do_filme = anos.map(cpi_por_ano)
+
+    #fator > 1 pra filmes antigos, fator = 1 no ano de referencia
+    fator = cpi_ref / cpi_do_filme
+    df["budget_ajustado"] = df["budget"] * fator
+    df["revenue_ajustado"] = df["revenue"] * fator
+
+    #remove filmes sem data válida ou com ano fora da tabela do cpi
+    df = df.dropna(subset = ["budget_ajustado", "revenue_ajustado"]).copy()
+
+    return df
 
 
 def criar_alvo(df):
